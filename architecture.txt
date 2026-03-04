@@ -1,0 +1,14 @@
+graph TB
+    A[FastAPI App] --> B[PostgreSQL]
+    A --> C[Redis Cache]
+    A --> D[Kafka Producer]
+    D --> E[Kafka Topic: order-events]
+    E --> F[Kafka Consumer]
+    F --> B
+    A --> H[Prometheus]
+    H --> I[Grafana]
+    A --> K[Rate Limiter]
+    C --> L[Cache Manager]
+    M[Health Checker] --> A
+    N[Error Handler] --> A
+

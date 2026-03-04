@@ -1,0 +1,42 @@
+sequenceDiagram
+    participant User
+    participant API as FastAPI
+    participant Redis
+    participant DB as PostgreSQL
+    participant Kafka as Kafka Topic
+    participant Worker as Kafka Consumer
+    participant Monitor as Prometheus
+
+    %% SCENARIO 1: GET PRICE (High Speed + Monitoring)
+    Note over User, DB: SCENARIO 1: GET /products/101 (Viewing the Price)
+    
+    User->>API: GET /products/101
+    API->>Redis: Check Cache for "product:101"
+    
+    alt Cache Hit (Fast)
+        Redis-->>API: Return {price: 100}
+    else Cache Miss (Slow)
+        API->>DB: SELECT price FROM products...
+        DB-->>API: Return Data
+        API->>Redis: Save to Cache
+    end
+    
+    API->>Monitor: Record Latency (e.g., 15ms)
+    API-->>User: 200 OK (Price: $100)
+
+    %% SCENARIO 2: BUY PRODUCT (High Safety + Monitoring)
+    Note over User, DB: SCENARIO 2: POST /orders (Buying the Product)
+    
+    User->>API: POST /orders {id: 101, payment: ...}
+    
+    API->>Kafka: Publish "New Order" Event
+    API->>Monitor: Increment "orders_received_total"
+    API-->>User: 202 Accepted (Order ID: #555)
+    
+    %% Background Processing
+    par Background Work
+        Kafka->>Worker: Consumer picks up order
+        Worker->>DB: INSERT INTO orders...
+        Worker->>DB: UPDATE inventory...
+        Worker->>Monitor: Increment "orders_processed_total"
+    end
