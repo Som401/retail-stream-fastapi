@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
-# Container entrypoint: load data if needed, then start the API.
+# Container entrypoint — supports two modes:
+#   MODE=api      (default) → load data if needed, then start uvicorn
+#   MODE=consumer           → start Kafka consumer worker
 set -e
 
+MODE="${MODE:-api}"
+
+if [ "$MODE" = "consumer" ]; then
+    echo "Starting Kafka consumer worker..."
+    exec python -m app.kafka_consumer
+fi
+
+# --- API mode ---
 echo "Checking if data is already loaded..."
-# Try to count rows in order_lines. If table doesn't exist or is empty, load data.
 ROW_COUNT=$(python -c "
 import asyncio, asyncpg, os
 async def check():
@@ -31,5 +40,6 @@ else
     echo "Database already has ${ROW_COUNT} rows. Skipping load."
 fi
 
-echo "Starting API..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+WORKERS="${UVICORN_WORKERS:-1}"
+echo "Starting API with ${WORKERS} uvicorn worker(s)..."
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers "$WORKERS"

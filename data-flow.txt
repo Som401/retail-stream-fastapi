@@ -1,42 +1,50 @@
 sequenceDiagram
     participant User
-    participant API as FastAPI
+    participant LB as Nginx Load Balancer
+    participant API as FastAPI (x N instances)
     participant Redis
     participant DB as PostgreSQL
-    participant Kafka as Kafka Topic
+    participant Kafka as Kafka Topic: order-events
     participant Worker as Kafka Consumer
-    participant Monitor as Prometheus
 
-    %% SCENARIO 1: GET PRICE (High Speed + Monitoring)
-    Note over User, DB: SCENARIO 1: GET /products/101 (Viewing the Price)
-    
-    User->>API: GET /products/101
-    API->>Redis: Check Cache for "product:101"
-    
-    alt Cache Hit (Fast)
-        Redis-->>API: Return {price: 100}
-    else Cache Miss (Slow)
-        API->>DB: SELECT price FROM products...
-        DB-->>API: Return Data
-        API->>Redis: Save to Cache
-    end
-    
-    API->>Monitor: Record Latency (e.g., 15ms)
-    API-->>User: 200 OK (Price: $100)
+    %% SCENARIO 1: GET /products/{stock_code} — Cache-Aside
+    Note over User, DB: SCENARIO 1: GET /products/85048 (Product Lookup)
 
-    %% SCENARIO 2: BUY PRODUCT (High Safety + Monitoring)
-    Note over User, DB: SCENARIO 2: POST /orders (Buying the Product)
-    
-    User->>API: POST /orders {id: 101, payment: ...}
-    
-    API->>Kafka: Publish "New Order" Event
-    API->>Monitor: Increment "orders_received_total"
-    API-->>User: 202 Accepted (Order ID: #555)
-    
-    %% Background Processing
-    par Background Work
-        Kafka->>Worker: Consumer picks up order
-        Worker->>DB: INSERT INTO orders...
-        Worker->>DB: UPDATE inventory...
-        Worker->>Monitor: Increment "orders_processed_total"
+    User->>LB: GET /products/85048
+    LB->>API: Forward (least connections)
+    API->>Redis: GET product:85048
+
+    alt Cache Hit (fast path)
+        Redis-->>API: Return cached JSON
+    else Cache Miss (slow path)
+        API->>DB: SELECT ... FROM products WHERE stock_code = '85048'
+        DB-->>API: Return row
+        API->>Redis: SET product:85048 (TTL 300s)
     end
+
+    API-->>LB: JSON response
+    LB-->>User: 200 OK {stock_code, description, price}
+
+    %% SCENARIO 2: POST /orders — Async via Kafka
+    Note over User, DB: SCENARIO 2: POST /orders (Create Order — Async)
+
+    User->>LB: POST /orders {invoice, stock_code, quantity, price, ...}
+    LB->>API: Forward
+    API->>Kafka: Publish order event to "order-events"
+    API-->>LB: 202 Accepted {status: "accepted", invoice: "..."}
+    LB-->>User: 202 Accepted
+
+    par Background Processing
+        Kafka->>Worker: Consumer picks up order event
+        Worker->>DB: INSERT INTO order_lines (...)
+    end
+
+    %% SCENARIO 3: GET /orders/invoice/{id} — Direct DB Query
+    Note over User, DB: SCENARIO 3: GET /orders/invoice/489434
+
+    User->>LB: GET /orders/invoice/489434
+    LB->>API: Forward
+    API->>DB: SELECT ... FROM order_lines WHERE invoice = '489434'
+    DB-->>API: Return rows
+    API-->>LB: JSON array
+    LB-->>User: 200 OK [{order_line_1}, {order_line_2}, ...]

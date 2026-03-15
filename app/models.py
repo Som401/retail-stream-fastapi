@@ -25,3 +25,23 @@ class OrderLineResponse(BaseModel):
     customer_id: int | None = None
     country: str | None = None
     year: str | None = None
+
+
+class OrderCreateRequest(BaseModel):
+    """POST /orders request body — creates a new order via Kafka."""
+
+    invoice: str
+    stock_code: str
+    description: str | None = None
+    quantity: int = 1
+    price: float
+    customer_id: int | None = None
+    country: str | None = None
+
+
+class OrderAcceptedResponse(BaseModel):
+    """202 Accepted response for POST /orders."""
+
+    status: str = "accepted"
+    invoice: str
+    message: str = "Order submitted for processing"

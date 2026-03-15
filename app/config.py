@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     redis_db: int = 0
     cache_ttl_seconds: int = 300  # 5 minutes
 
+    # Kafka
+    kafka_bootstrap_servers: str = "localhost:9092"
+    kafka_order_topic: str = "order-events"
+
     @property
     def database_url(self) -> str:
         return (

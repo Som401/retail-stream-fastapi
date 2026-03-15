@@ -8,6 +8,9 @@ asyncpg>=0.29.0
 # Cache
 redis>=5.0.0
 
+# Kafka
+aiokafka>=0.11.0
+
 # Config & validation
 pydantic>=2.5.0
 pydantic-settings>=2.1.0
