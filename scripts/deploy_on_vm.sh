@@ -2,6 +2,7 @@
 # Deploy latest main branch on the VM using docker compose / docker-compose.
 set -euo pipefail
 
+APP_SCALE="${1:-5}"
 PROJECT_DIR="${PROJECT_DIR:-$HOME/retail-stream-fastapi}"
 
 if docker compose version >/dev/null 2>&1; then
@@ -27,7 +28,16 @@ git fetch origin main
 git reset --hard origin/main
 
 echo "Starting containers..."
-${COMPOSE_CMD} up -d --build
+# Backward-compatible deploy:
+# - If service 'app' exists (old compose), use --scale app=N
+# - Otherwise (new compose with app1/app2/app3), run standard up
+if ${COMPOSE_CMD} config --services | grep -qx "app"; then
+  echo "Detected service 'app'. Using scale=${APP_SCALE}."
+  ${COMPOSE_CMD} up -d --build --scale app="${APP_SCALE}"
+else
+  echo "No 'app' service detected. Using static app services from compose."
+  ${COMPOSE_CMD} up -d --build
+fi
 
 echo "Container status:"
 ${COMPOSE_CMD} ps
