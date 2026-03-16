@@ -13,6 +13,7 @@ from fastapi.responses import ORJSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.cache import close_redis, get_cached_product, set_cached_product
+from app.config import settings
 from app.db import (
     close_pool,
     fetch_order_lines_by_country,
@@ -46,7 +47,8 @@ app = FastAPI(
     default_response_class=ORJSONResponse,
 )
 
-Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+if settings.enable_metrics:
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 
 # ── Health ────────────────────────────────────────────────────────────────────

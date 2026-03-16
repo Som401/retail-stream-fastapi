@@ -28,6 +28,7 @@ services:
       APP_POSTGRES_HOST: postgres
       APP_REDIS_HOST: redis
       APP_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      APP_ENABLE_METRICS: "false"
       UVICORN_WORKERS: "4"
     depends_on:
       postgres:

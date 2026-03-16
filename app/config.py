@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     kafka_bootstrap_servers: str = "localhost:9092"
     kafka_order_topic: str = "order-events"
 
+    # Observability
+    enable_metrics: bool = True
+
     @property
     def database_url(self) -> str:
         return (
