@@ -1,18 +1,36 @@
 """Redis cache-aside for product reads (GET /products/{stock_code})."""
-import json
+import orjson
+
 import redis.asyncio as redis
+
 from app.config import settings
 
 _CACHE_KEY_PREFIX = "product:"
+_pool: redis.ConnectionPool | None = None
+
+
+def _get_pool() -> redis.ConnectionPool:
+    global _pool
+    if _pool is None:
+        _pool = redis.ConnectionPool.from_url(
+            settings.redis_url,
+            encoding="utf-8",
+            decode_responses=True,
+            max_connections=50,
+        )
+    return _pool
 
 
 async def get_redis() -> redis.Redis:
-    """Return a Redis connection (new each time for simplicity; can use pool later)."""
-    return redis.from_url(
-        settings.redis_url,
-        encoding="utf-8",
-        decode_responses=True,
-    )
+    """Return a Redis client backed by a shared connection pool."""
+    return redis.Redis(connection_pool=_get_pool())
+
+
+async def close_redis() -> None:
+    global _pool
+    if _pool is not None:
+        await _pool.aclose()
+        _pool = None
 
 
 def _cache_key(stock_code: str) -> str:
@@ -20,29 +38,17 @@ def _cache_key(stock_code: str) -> str:
 
 
 async def get_cached_product(stock_code: str) -> dict | None:
-    """
-    Cache-aside: get product from Redis. Returns None on miss or error.
-    """
     r = await get_redis()
-    try:
-        key = _cache_key(stock_code.strip())
-        data = await r.get(key)
-        if data is None:
-            return None
-        return json.loads(data)
-    finally:
-        await r.aclose()
+    data = await r.get(_cache_key(stock_code.strip()))
+    if data is None:
+        return None
+    return orjson.loads(data)
 
 
 async def set_cached_product(stock_code: str, product: dict) -> None:
-    """Store product in Redis with TTL."""
     r = await get_redis()
-    try:
-        key = _cache_key(stock_code.strip())
-        await r.set(
-            key,
-            json.dumps(product),
-            ex=settings.cache_ttl_seconds,
-        )
-    finally:
-        await r.aclose()
+    await r.set(
+        _cache_key(stock_code.strip()),
+        orjson.dumps(product),
+        ex=settings.cache_ttl_seconds,
+    )

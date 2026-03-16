@@ -9,9 +9,10 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import ORJSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.cache import get_cached_product, set_cached_product
+from app.cache import close_redis, get_cached_product, set_cached_product
 from app.db import (
     close_pool,
     fetch_order_lines_by_country,
@@ -34,6 +35,7 @@ from app.models import (
 async def lifespan(app: FastAPI):
     yield
     await close_producer()
+    await close_redis()
     await close_pool()
 
 
@@ -41,6 +43,7 @@ app = FastAPI(
     title="Retail Stream API",
     description="Scalable data service: Nginx LB → N × FastAPI → Redis cache + Kafka async orders → PostgreSQL.",
     lifespan=lifespan,
+    default_response_class=ORJSONResponse,
 )
 
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")

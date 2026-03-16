@@ -11,6 +11,9 @@ redis>=5.0.0
 # Kafka
 aiokafka>=0.11.0
 
+# Fast JSON
+orjson>=3.9.0
+
 # Metrics
 prometheus-fastapi-instrumentator>=7.0.0
 
