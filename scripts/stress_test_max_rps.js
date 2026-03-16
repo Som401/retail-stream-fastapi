@@ -1,18 +1,24 @@
 /**
  * k6 constant-arrival-rate test — targets a FIXED number of requests/sec.
  *
- * Usage (on the k6 VM, NOT the app VM):
+ * Same VM (k6 + API together): use TARGET_RPS=2000 so you don't hit VU limit.
+ *   k6 run --env TARGET_RPS=2000 -o experimental-prometheus-rw \
+ *     --env K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9090/api/v1/write \
+ *     scripts/stress_test_max_rps.js
+ *
+ * Separate k6 VM (recommended): use higher TARGET_RPS, more VUs available.
  *   TARGET_RPS=5000 k6 run -o experimental-prometheus-rw \
  *     --env K6_PROMETHEUS_RW_SERVER_URL=http://APP_VM_IP:9090/api/v1/write \
  *     --env BASE_URL=http://APP_VM_IP \
  *     scripts/stress_test_max_rps.js
  *
- * Increase TARGET_RPS until errors appear → that is your max sustained RPS.
+ * Rule: maxVUs must be >= TARGET_RPS × avg response time (s). We set 10000 so
+ * 5000 req/s at ~2s latency is covered. Increase TARGET_RPS until errors appear.
  */
 import http from 'k6/http';
 import { check } from 'k6';
 
-const targetRPS = parseInt(__ENV.TARGET_RPS || '5000');
+const targetRPS = parseInt(__ENV.TARGET_RPS || '2000');
 const base = __ENV.BASE_URL || 'http://localhost';
 
 export const options = {
@@ -22,8 +28,8 @@ export const options = {
       rate: targetRPS,
       timeUnit: '1s',
       duration: '60s',
-      preAllocatedVUs: 500,
-      maxVUs: 2000,
+      preAllocatedVUs: 1000,
+      maxVUs: 10000,
     },
   },
 };
