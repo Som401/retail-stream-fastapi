@@ -9,7 +9,7 @@ import http from 'k6/http';
 import { check } from 'k6';
 
 const base = __ENV.BASE_URL || 'http://localhost';
-const endpoint = __ENV.ENDPOINT || '/products-fast/85048';
+const endpoint = __ENV.ENDPOINT || '/products/85048';
 
 export const options = {
   scenarios: {
