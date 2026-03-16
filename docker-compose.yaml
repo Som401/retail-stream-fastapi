@@ -1,3 +1,29 @@
+x-app-common: &app-common
+  build: .
+  expose:
+    - "8000"
+  ulimits:
+    nofile:
+      soft: 200000
+      hard: 200000
+  environment: &app-env
+    APP_POSTGRES_HOST: postgres
+    APP_REDIS_HOST: redis
+    APP_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    APP_ENABLE_METRICS: "false"
+    APP_CACHE_TTL_SECONDS: "3600"
+    UVICORN_WORKERS: "2"
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+  volumes:
+    - ./online_retail_all.csv:/app/online_retail_all.csv:ro
+  restart: unless-stopped
+
 services:
   # ── Load Balancer ───────────────────────────────────────────────────────────
   nginx:
@@ -12,34 +38,18 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - app
+      - app1
+      - app2
+      - app3
     restart: unless-stopped
 
-  # ── FastAPI (scaled horizontally with: docker compose up -d --scale app=N) ─
-  app:
-    build: .
-    expose:
-      - "8000"
-    ulimits:
-      nofile:
-        soft: 200000
-        hard: 200000
-    environment:
-      APP_POSTGRES_HOST: postgres
-      APP_REDIS_HOST: redis
-      APP_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      APP_ENABLE_METRICS: "false"
-      UVICORN_WORKERS: "4"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    volumes:
-      - ./online_retail_all.csv:/app/online_retail_all.csv:ro
-    restart: unless-stopped
+  # ── FastAPI instances (3 containers × 2 workers = 6 processes) ─────────────
+  app1:
+    <<: *app-common
+  app2:
+    <<: *app-common
+  app3:
+    <<: *app-common
 
   # ── Kafka Consumer Worker ───────────────────────────────────────────────────
   worker:
@@ -120,7 +130,7 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--web.enable-remote-write-receiver"
     depends_on:
-      - app
+      - app1
     restart: unless-stopped
 
   # ── Grafana ─────────────────────────────────────────────────────────────────

@@ -2,7 +2,6 @@
 # Deploy latest main branch on the VM using docker compose / docker-compose.
 set -euo pipefail
 
-APP_SCALE="${1:-5}"
 PROJECT_DIR="${PROJECT_DIR:-$HOME/retail-stream-fastapi}"
 
 if docker compose version >/dev/null 2>&1; then
@@ -27,11 +26,12 @@ echo "Updating source code to origin/main..."
 git fetch origin main
 git reset --hard origin/main
 
-echo "Starting containers with app scale=${APP_SCALE}..."
-${COMPOSE_CMD} up -d --build --scale app="${APP_SCALE}"
+echo "Starting containers..."
+${COMPOSE_CMD} up -d --build
 
 echo "Container status:"
 ${COMPOSE_CMD} ps
 
 echo "Health check (via Nginx):"
+sleep 3
 curl -fsS "http://localhost/health" || true
