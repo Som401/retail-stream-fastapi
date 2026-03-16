@@ -111,4 +111,3 @@ This repo includes a GitHub Actions workflow that deploys to your GCP VM on ever
 - Workflow file: `.github/workflows/deploy-gcp.yml`
 - VM deploy script: `scripts/deploy_on_vm.sh`
 - Setup guide: `docs/CI_CD_GCP.md`
-- 
