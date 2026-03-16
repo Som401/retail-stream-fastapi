@@ -1,0 +1,39 @@
+name: Deploy to GCP VM
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      app_scale:
+        description: "Number of FastAPI replicas"
+        required: false
+        default: "5"
+
+concurrency:
+  group: deploy-gcp-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_VM_HOST }}
+          username: ${{ secrets.GCP_VM_USER }}
+          key: ${{ secrets.GCP_VM_SSH_KEY }}
+          port: ${{ secrets.GCP_VM_SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            PROJECT_DIR="${{ secrets.GCP_PROJECT_DIR }}"
+            if [ -z "$PROJECT_DIR" ]; then PROJECT_DIR="$HOME/retail-stream-fastapi"; fi
+
+            APP_SCALE="${{ github.event.inputs.app_scale }}"
+            if [ -z "$APP_SCALE" ]; then APP_SCALE="${{ secrets.GCP_APP_SCALE }}"; fi
+            if [ -z "$APP_SCALE" ]; then APP_SCALE="5"; fi
+
+            cd "$PROJECT_DIR"
+            bash scripts/deploy_on_vm.sh "$APP_SCALE"

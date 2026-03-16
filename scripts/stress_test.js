@@ -1,7 +1,7 @@
 import http from 'k6/http';
 import { check } from 'k6';
 
-// Laptop + Docker: keep VUs modest so all 3 app replicas stay healthy (~99% pass).
+// Laptop + Docker: keep VUs modest so all 3 app replicas stay healthy (~99% pass). 
 // Default 30 VUs; use STRESS=1 on EC2 for 200 VUs.
 const stress = __ENV.STRESS === '1';
 const targetVUs = stress ? 200 : 30;

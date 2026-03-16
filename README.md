@@ -103,3 +103,11 @@ Override with environment variables (prefix `APP_`):
 - `APP_REDIS_HOST`, `APP_REDIS_PORT`, `APP_CACHE_TTL_SECONDS`
 
 Default: `localhost`, user `retail`, password `retail`, DB `retail`, Redis port 6379, cache TTL 300 s.
+
+## CI/CD (Auto-deploy to GCP)
+
+This repo includes a GitHub Actions workflow that deploys to your GCP VM on every push to `main`.
+
+- Workflow file: `.github/workflows/deploy-gcp.yml`
+- VM deploy script: `scripts/deploy_on_vm.sh`
+- Setup guide: `docs/CI_CD_GCP.md`
