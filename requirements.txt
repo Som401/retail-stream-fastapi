@@ -11,6 +11,9 @@ redis>=5.0.0
 # Kafka
 aiokafka>=0.11.0
 
+# Metrics
+prometheus-fastapi-instrumentator>=7.0.0
+
 # Config & validation
 pydantic>=2.5.0
 pydantic-settings>=2.1.0

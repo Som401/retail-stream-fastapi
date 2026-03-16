@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # FastAPI instances (Docker DNS resolves "app" to all --scale replicas)
+  - job_name: fastapi
+    dns_sd_configs:
+      - names: ["app"]
+        type: A
+        port: 8000
+    metrics_path: /metrics
+
+  # Prometheus itself
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

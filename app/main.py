@@ -4,10 +4,12 @@ Retail Stream API — Backend with Redis cache-aside + Kafka async orders.
 GET /products/{stock_code}  → Redis cache-aside → PostgreSQL
 POST /orders                → Kafka (async) → Consumer → PostgreSQL
 """
+import socket
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Query
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.cache import get_cached_product, set_cached_product
 from app.db import (
@@ -41,12 +43,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
 
 # ── Health ────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/instance")
+async def instance():
+    """Return this container's hostname to verify load balancing."""
+    return {"instance": socket.gethostname()}
 
 
 @app.get("/ready")
