@@ -10,7 +10,7 @@
 # the instance template.
 set -euo pipefail
 
-DATA_VM_IP="REPLACE_WITH_DATA_VM_INTERNAL_IP"
+DATA_VM_IP="10.128.0.2"
 REPO="https://github.com/Som401/retail-stream-fastapi.git"
 PROJECT_DIR="/opt/retail-stream-fastapi"
 
