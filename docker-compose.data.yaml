@@ -19,10 +19,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     command:
       - "postgres"
-      - "-c" "max_connections=500"
-      - "-c" "shared_buffers=2GB"
-      - "-c" "effective_cache_size=6GB"
-      - "-c" "work_mem=16MB"
+      - "-c"
+      - "max_connections=500"
+      - "-c"
+      - "shared_buffers=2GB"
+      - "-c"
+      - "effective_cache_size=6GB"
+      - "-c"
+      - "work_mem=16MB"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U retail -d retail"]
       interval: 5s
