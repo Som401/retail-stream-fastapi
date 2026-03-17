@@ -1,0 +1,55 @@
+# ── API VM compose ────────────────────────────────────────────────────────────
+# Run on each API VM.
+# DATA_VM_IP must be set to the INTERNAL IP of your data VM.
+#
+#   DATA_VM_IP=10.x.x.x docker-compose -f docker-compose.api.yaml up -d --build
+#
+# Or export it first:
+#   export DATA_VM_IP=10.x.x.x
+#   docker-compose -f docker-compose.api.yaml up -d --build
+#
+# GCP LB health check endpoint: GET /health → port 80
+
+x-app-common: &app-common
+  build: .
+  expose:
+    - "8000"
+  ulimits:
+    nofile:
+      soft: 200000
+      hard: 200000
+  environment:
+    APP_POSTGRES_HOST: ${DATA_VM_IP:?DATA_VM_IP env var is required}
+    APP_REDIS_HOST: ${DATA_VM_IP}
+    APP_KAFKA_BOOTSTRAP_SERVERS: ${DATA_VM_IP}:29092
+    APP_ENABLE_METRICS: "false"
+    APP_CACHE_TTL_SECONDS: "3600"
+    UVICORN_WORKERS: "2"
+  restart: unless-stopped
+
+services:
+  # ── Nginx (routes to local app replicas) ────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app1
+      - app2
+      - app3
+    restart: unless-stopped
+
+  # ── 3 FastAPI replicas (3 containers × 2 workers = 6 processes per API VM) ─
+  app1:
+    <<: *app-common
+  app2:
+    <<: *app-common
+  app3:
+    <<: *app-common
