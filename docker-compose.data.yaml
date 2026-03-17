@@ -74,7 +74,7 @@ services:
 
   # ── Kafka Consumer Worker ───────────────────────────────────────────────────
   worker:
-    image: ghcr.io/som401/retail-stream-fastapi:latest
+    build: .
     environment:
       APP_POSTGRES_HOST: postgres
       APP_REDIS_HOST: redis
@@ -92,7 +92,7 @@ services:
 
   # ── Data loader (runs once, exits) ─────────────────────────────────────────
   loader:
-    image: ghcr.io/som401/retail-stream-fastapi:latest
+    build: .
     environment:
       APP_POSTGRES_HOST: postgres
       APP_REDIS_HOST: redis
