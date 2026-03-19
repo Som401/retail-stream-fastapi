@@ -33,9 +33,16 @@ print(asyncio.run(check()))
 " 2>/dev/null || echo "0")
 
 if [ "$ROW_COUNT" -lt 1000 ]; then
-    echo "Database is empty (${ROW_COUNT} rows). Loading CSV..."
-    python scripts/load_data.py
-    echo ""
+    CSV_PATH="${APP_CSV_PATH:-/app/online_retail_all.csv}"
+    if [ -f "$CSV_PATH" ]; then
+        echo "Database is empty (${ROW_COUNT} rows). Loading CSV from ${CSV_PATH}..."
+        if ! python scripts/load_data.py; then
+            echo "Warning: data load failed on this node; continuing to start API."
+        fi
+        echo ""
+    else
+        echo "Database is empty (${ROW_COUNT} rows) but CSV not found at ${CSV_PATH}; skipping load on this node."
+    fi
 else
     echo "Database already has ${ROW_COUNT} rows. Skipping load."
 fi
