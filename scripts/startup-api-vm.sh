@@ -6,13 +6,18 @@
 # Or pass it via gcloud:
 #   --metadata-from-file startup-script=scripts/startup-api-vm.sh
 #
-# IMPORTANT: set DATA_VM_IP to your data VM's internal IP before creating
-# the instance template.
+# IMPORTANT (cross-account): set DATA_VM_IP to your data VM's PUBLIC static IP
+# before creating the instance template.
 set -euo pipefail
 
-DATA_VM_IP="10.128.0.2"
+DATA_VM_IP="REPLACE_WITH_DATA_VM_PUBLIC_IP"
 REPO="https://github.com/Som401/retail-stream-fastapi.git"
 PROJECT_DIR="/opt/retail-stream-fastapi"
+
+if [[ "$DATA_VM_IP" == "REPLACE_WITH_DATA_VM_PUBLIC_IP" || -z "$DATA_VM_IP" ]]; then
+  echo "ERROR: DATA_VM_IP is not set. Update scripts/startup-api-vm.sh first."
+  exit 1
+fi
 
 # ── Install Docker if not present ───────────────────────────────────────────
 if ! command -v docker &>/dev/null; then
@@ -56,13 +61,44 @@ else
 fi
 cd "$PROJECT_DIR"
 
+# ── Wait for DNS / outbound network before building images ───────────────────
+for host in pypi.org files.pythonhosted.org registry-1.docker.io github.com; do
+  ok=0
+  for i in {1..20}; do
+    if getent hosts "$host" >/dev/null 2>&1; then
+      ok=1
+      break
+    fi
+    sleep 3
+  done
+  if [[ "$ok" -ne 1 ]]; then
+    echo "ERROR: DNS not ready for $host after retries."
+    exit 1
+  fi
+done
+
 # ── Start the API stack ──────────────────────────────────────────────────────
 export DATA_VM_IP="$DATA_VM_IP"
 
-if docker compose version &>/dev/null 2>&1; then
-  docker compose -f docker-compose.api.yaml up -d --build
-else
-  docker-compose -f docker-compose.api.yaml up -d --build
+attempt=1
+until [[ "$attempt" -gt 3 ]]; do
+  if docker compose version &>/dev/null 2>&1; then
+    if docker compose -f docker-compose.api.yaml up -d --build; then
+      break
+    fi
+  else
+    if docker-compose -f docker-compose.api.yaml up -d --build; then
+      break
+    fi
+  fi
+  echo "docker compose failed (attempt $attempt/3). Retrying in 10s..."
+  attempt=$((attempt + 1))
+  sleep 10
+done
+
+if [[ "$attempt" -gt 3 ]]; then
+  echo "ERROR: Failed to start API stack after 3 attempts."
+  exit 1
 fi
 
 echo "API VM startup complete. DATA_VM_IP=$DATA_VM_IP"
