@@ -36,6 +36,15 @@ if ! command -v docker &>/dev/null; then
   systemctl start docker
 fi
 
+# ── Force Docker DNS (fixes pip DNS failures during image build) ─────────────
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<'EOF'
+{
+  "dns": ["8.8.8.8", "1.1.1.1"]
+}
+EOF
+systemctl restart docker
+
 # ── Install docker-compose standalone (for older Debian) ────────────────────
 if ! command -v docker-compose &>/dev/null && ! docker compose version &>/dev/null 2>&1; then
   curl -SL "https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-$(uname -m)" \
