@@ -7,19 +7,20 @@
  *     scripts/stress_test_max_rps.js
  *
  * Separate k6 VM (recommended): use higher TARGET_RPS, more VUs available.
- *   TARGET_RPS=5000 k6 run -o experimental-prometheus-rw \
+ *   TARGET_RPS=6000 ENDPOINT=/products-fast/85048 k6 run -o experimental-prometheus-rw \
  *     --env K6_PROMETHEUS_RW_SERVER_URL=http://APP_VM_IP:9090/api/v1/write \
  *     --env BASE_URL=http://APP_VM_IP \
  *     scripts/stress_test_max_rps.js
  *
- * Rule: maxVUs must be >= TARGET_RPS × avg response time (s). We set 10000 so
- * 5000 req/s at ~2s latency is covered. Increase TARGET_RPS until errors appear.
+ * Rule: maxVUs must be >= TARGET_RPS × avg response time (s). We set 12000 so
+ * 6000+ req/s tests have headroom. Increase TARGET_RPS until errors appear.
  */
 import http from 'k6/http';
 import { check } from 'k6';
 
-const targetRPS = parseInt(__ENV.TARGET_RPS || '2000');
+const targetRPS = parseInt(__ENV.TARGET_RPS || '6000');
 const base = __ENV.BASE_URL || 'http://localhost';
+const endpoint = __ENV.ENDPOINT || '/products/85048';
 
 export const options = {
   scenarios: {
@@ -28,14 +29,14 @@ export const options = {
       rate: targetRPS,
       timeUnit: '1s',
       duration: '60s',
-      preAllocatedVUs: 1000,
-      maxVUs: 10000,
+      preAllocatedVUs: 2000,
+      maxVUs: 12000,
     },
   },
 };
 
 export default function () {
-  const res = http.get(`${base}/products/85048`);
+  const res = http.get(`${base}${endpoint}`);
   check(res, {
     'status 200': (r) => r.status === 200,
   });
